@@ -1,0 +1,16 @@
+{
+  "name": "arduino_utils",
+  "keywords": "bounce, signal, input, ouput, rotary encoder, button, pcint, interrupt, debug, debugging, print, scheduling, callback",
+  "description": "Highly optimized arduino utility library for pin debouncing, rotary encoders, scheduled function execution and efficient debugging.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gdein1504/arduino_utils"
+  },
+  "version": "1.0",
+  "exclude": [
+    "*.png",
+    "*.zip"
+  ],
+  "frameworks": "arduino",
+  "platforms": "*"
+}
