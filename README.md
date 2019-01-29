@@ -9,4 +9,8 @@ FunctionScheduler:
 Allows delayed execution of functions to avoid havint to use the arduino delay function 
 
 Debug:
+<<<<<<< HEAD
 Contains a number of debug macros for logging. It allows asynchronous logging, so you can log from interrupt routines.
+=======
+Contains a number of debug macros for logging. It allows asynchronous logging, so you can log from interrupt routines.
+>>>>>>> aa5040bf743903b348c41096440c3c07903ff248
