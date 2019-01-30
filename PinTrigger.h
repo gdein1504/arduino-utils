@@ -11,16 +11,6 @@
 #define registerButton(functionName, pin) Trigger.setListener(functionName, pin)
 #define registerRotaryEncoder(functionName, pinA, pinB) Trigger.setRotaryListener(functionName, pinA, pinB)
 
-static byte const first1BitperNib[] = {4,0,1,0,2,0,1,0,3,0,1,0,2,0,3,0};
-// gets the index of the least significant it of a byte
-#define FIRST1BIT(x) ((x&0x0F) == 0 ? first1BitperNib[(x)>>4] + 4 : first1BitperNib[(x)&0xF])
-
-static byte const bitsPerNib[] = {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4};
-#define BITCOUNT(x) (bitsPerNib[(x)&0xF] + bitsPerNib[(x)>>4])
-
-static byte const bitMask[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
-#define GET_BITMASK(x) bitMask[x]
-
 #ifndef DEBOUNCE_TIME
   #define DEBOUNCE_TIME 20
 #endif

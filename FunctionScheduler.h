@@ -26,20 +26,17 @@ void myFunction()
 *********************************************************************/
 
 
+#include "sharedutils.h"
 
 #ifndef FUNCTION_SCHEDULER
 #define FUNCTION_SCHEDULER
 #include "Arduino.h"
 
-#define DEBUG
+
+//#define DEBUG
 #include "debug.h"
 
 typedef void (* ScheduledFunction) ();
-
-static int8_t const first0BitperNib[] = {0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,-1};
-#define FIRST0BIT(x) ((x&0x0F) == 0x0F ? first0BitperNib[(x)>>4] + 4 : first0BitperNib[(x)&0xF])
-
-//#define delayedCall(f, del) Scheduler.scheduleCall(f, del)
 
 class FunctionScheduler
 {
@@ -58,7 +55,7 @@ public:
     DEBUG_PRINT(" in ms");
     DEBUG_PRINTLNDEC(execDelay);
 
-    int8_t nextSlot = FIRST0BIT(activeSlots);
+    int8_t nextSlot = -1; //FIRST1BIT(^activeSlots);
     if(nextSlot==-1)
       return -1;
 
@@ -99,7 +96,7 @@ public:
       return false;
     }
 
-    byte curSlot = FIRST1BIT(activeSlots);
+    byte curSlot = FIRST1BITX(activeSlots);
     byte curMask = 1<<curSlot;
     
     for(; curMask<=activeSlots && curSlot<8; curSlot++, curMask<<=1)

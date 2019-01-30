@@ -1,13 +1,12 @@
 #include "PinTrigger.h"
 //#define DEBUG
-#define WARN
-#define PERF_TIME
+//#define WARN
+//#define PERF_TIME
 #include "Debug.h"
+#include "sharedutils.h"
 
 PinTrigger Trigger = PinTrigger();
 extern unsigned long timer0_millis; // in interrupts we access this variable directly - this is faster
-
-#define swap(value) asm("swap %0" : "=r" (value) : "0" (value)) 
 
 #ifndef NO_INTERRUPTS
 ISR(PCINT0_vect) //handle pin change interrupt for D8 to D13 here
