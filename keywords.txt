@@ -10,7 +10,6 @@
 # Methods and Functions (KEYWORD2)
 #######################################
 
-processInterrupt	 	KEYWORD2
 setRotaryListener	 	KEYWORD2
 setListener	 			KEYWORD2
 setListenerImmediate	KEYWORD2
@@ -18,6 +17,11 @@ process					KEYWORD2
 safeToSleep				KEYWORD2
 getLastTriggerTMS		KEYWORD2
 
+reschedule	 			KEYWORD2
+isActive	 			KEYWORD2
+cancel	 				KEYWORD2
+
+printDebugMsgAsync		KEYWORD2
 
 PRINT_ASYNC             KEYWORD2
 PRINT_ASYNC_TMS         KEYWORD2
@@ -26,7 +30,6 @@ PRINTLN_ASYNC           KEYWORD2
 PRINTLN_ASYNC_TMS       KEYWORD2
 PRINTLN_ASYNC_INT       KEYWORD2
 PRINT_ASYNC_DEBUG_MSGS  KEYWORD2
-
 
 DEBUG_PRINT_ASYNC             KEYWORD2
 DEBUG_PRINT_ASYNC_TMS         KEYWORD2
@@ -63,8 +66,8 @@ WARN_PRINTLN                  KEYWORD2
 #######################################
 # Instances (KEYWORD2)
 #######################################
-Trigger 	KEYWORD2
-Scheduler 	KEYWORD2
+Trigger 			KEYWORD2
+ScheduledFunction 	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
