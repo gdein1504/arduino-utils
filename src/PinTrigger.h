@@ -1,12 +1,15 @@
+#ifndef PIN_TRIGGER
+#define PIN_TRIGGER
+
 #include "Arduino.h"
 
-//#if ( defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)  )
+#if ( defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)  )
   volatile static byte* const PortToPCMSK[] = { &PCMSK2, &PCMSK0, &PCMSK1 };
-//#elif defined(__AVR_ATmega16__) || defined(__AVR_ATmega8__) || defined(__AVR_ATmega32__)
- // #define NO_INTERRUPTS // these chips dont have pin change interrupts
-//#else
-// #define NO_INTERRUPTS
-//#endif
+#elif defined(__AVR_ATmega16__) || defined(__AVR_ATmega8__) || defined(__AVR_ATmega32__)
+  #define NO_INTERRUPTS // these chips dont have pin change interrupts
+#else
+ #define NO_INTERRUPTS
+#endif
 
 #define registerButton(functionName, pin) Trigger.setListener(functionName, pin)
 #define registerRotaryEncoder(functionName, pinA, pinB) Trigger.setRotaryListener(functionName, pinA, pinB)
@@ -43,6 +46,7 @@ volatile static byte* const PortToPins[] = { &PIND, &PINB, &PINC };
 
 typedef void (* PinListenerFunctionPointer) (byte pinValue, byte pinNum);
 typedef void (* RotaryListenerFunctionPointer) (signed char delta);
+
 
 class PinTrigger
 {
@@ -109,3 +113,6 @@ public:
 };
 
 extern PinTrigger Trigger;
+
+
+#endif

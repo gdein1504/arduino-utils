@@ -1,18 +1,19 @@
-
-#include <FunctionScheduler.h>
-#include <PinTrigger.h>
-#include <Debug.h>
+#include "ScheduledFunction.h"
+#include "PinTrigger.h"
+#include "Debug.h"
 
 #define ROTARY_A_PIN  3
 #define ROTARY_B_PIN  4
+
 #define LED_ON_PIN    5
 #define LED_OFF_PIN   6
 #define LED_BLINK_PIN 7
 
-int blinkWaitTime = 500; // wait time for blinks in millis
+unsigned int blinkWaitTime = 500; // wait time for blinks in millis
 bool isBlinking = false;
 bool blinkLedState = LOW;
 
+ScheduledFunction blinker = ScheduledFunction(blinkFunction, blinkWaitTime , true, false);
 
 void setup()
 {
@@ -29,7 +30,7 @@ void setup()
 
 void loop() {
   Trigger.process();
-  Scheduler.process();
+  blinker.process();
 }
 
 void ledOnBtn(byte pinValue, byte pinNum)
@@ -53,10 +54,10 @@ void ledBlinkBtn(byte pinValue, byte pinNum)
 {
   if (pinValue == LOW) // button has been released
   {
-    if(isBlinking)
-      isBlinking = false;
+    if(blinker.isActive())
+      blinker.cancel();
     else
-      blinkFunction();
+      blinker.reschedule(blinkWaitTime, true);
     isBlinking != isBlinking;
   }
 }
@@ -65,18 +66,15 @@ void ledBlinkBtn(byte pinValue, byte pinNum)
 void blinkSpeedControl(int8_t delta)
 {
   blinkWaitTime += delta*10;
+  blinker.reschedule(blinkWaitTime, true);
 }
 
 void blinkFunction()
 {
-  if(!isBlinking)
-    return;
-    
   if(blinkLedState==HIGH)
     blinkLedState=LOW;
   else
     blinkLedState=HIGH;
   
   digitalWrite(LED_BUILTIN, blinkLedState);
-  Scheduler.scheduleCall(blinkFunction, blinkWaitTime);
 }
