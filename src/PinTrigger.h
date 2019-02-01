@@ -1,25 +1,18 @@
+#ifndef PIN_TRIGGER
+#define PIN_TRIGGER
+
 #include "Arduino.h"
 
-//#if ( defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)  )
+#if ( defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)  )
   volatile static byte* const PortToPCMSK[] = { &PCMSK2, &PCMSK0, &PCMSK1 };
-//#elif defined(__AVR_ATmega16__) || defined(__AVR_ATmega8__) || defined(__AVR_ATmega32__)
- // #define NO_INTERRUPTS // these chips dont have pin change interrupts
-//#else
-// #define NO_INTERRUPTS
-//#endif
+#elif defined(__AVR_ATmega16__) || defined(__AVR_ATmega8__) || defined(__AVR_ATmega32__)
+  #define NO_INTERRUPTS // these chips dont have pin change interrupts
+#else
+ #define NO_INTERRUPTS
+#endif
 
 #define registerButton(functionName, pin) Trigger.setListener(functionName, pin)
 #define registerRotaryEncoder(functionName, pinA, pinB) Trigger.setRotaryListener(functionName, pinA, pinB)
-
-static byte const first1BitperNib[] = {4,0,1,0,2,0,1,0,3,0,1,0,2,0,3,0};
-// gets the index of the least significant it of a byte
-#define FIRST1BIT(x) ((x&0x0F) == 0 ? first1BitperNib[(x)>>4] + 4 : first1BitperNib[(x)&0xF])
-
-static byte const bitsPerNib[] = {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4};
-#define BITCOUNT(x) (bitsPerNib[(x)&0xF] + bitsPerNib[(x)>>4])
-
-static byte const bitMask[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
-#define GET_BITMASK(x) bitMask[x]
 
 #ifndef DEBOUNCE_TIME
   #define DEBOUNCE_TIME 20
@@ -53,6 +46,7 @@ volatile static byte* const PortToPins[] = { &PIND, &PINB, &PINC };
 
 typedef void (* PinListenerFunctionPointer) (byte pinValue, byte pinNum);
 typedef void (* RotaryListenerFunctionPointer) (signed char delta);
+
 
 class PinTrigger
 {
@@ -119,3 +113,6 @@ public:
 };
 
 extern PinTrigger Trigger;
+
+
+#endif
