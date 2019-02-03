@@ -24,7 +24,6 @@ void myFunction()
 }
 *********************************************************************/
 
-
 #ifndef SCHEDULEDFUNCTION
 #define SCHEDULEDFUNCTION
 
