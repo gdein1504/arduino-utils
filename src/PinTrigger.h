@@ -23,27 +23,21 @@
 #define SET_INTERRUPTHANDLER_PORTB(TRIGGER) \
 ISR(PCINT0_vect) \
 { \
-  byte sr = SREG; \
   TRIGGER.processInterrupt(PINB); \
-  SREG = sr; \
 }
 
 //handle pin change interrupt for A0 to A7 here 
 #define SET_INTERRUPTHANDLER_PORTC(TRIGGER) \
 ISR(PCINT1_vect) \
 { \
-  byte sr = SREG; \
   TRIGGER.processInterrupt(PINC); \
-  SREG = sr; \
 }
 
 //handle pin change interrupt for D0 to D7 here:
 #define SET_INTERRUPTHANDLER_PORTD(TRIGGER) \
 ISR(PCINT2_vect) \
 { \
-  byte sr = SREG; \
   TRIGGER.processInterrupt(PIND); \
-  SREG = sr; \
 }
 
 volatile static byte* const PortToPins[] = { &PIND, &PINB, &PINC };
