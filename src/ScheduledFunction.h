@@ -23,8 +23,7 @@ void myFunction()
   Scheduler.scheduleCall(myFunction, 60000); // call again in 60s
 }
 *********************************************************************/
-
-
+#include "Arduino.h"
 #ifndef SCHEDULEDFUNCTION
 #define SCHEDULEDFUNCTION
 
