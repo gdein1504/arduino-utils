@@ -6,7 +6,7 @@
 #if ( defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)  )
   volatile static byte* const PortToPCMSK[] = { &PCMSK2, &PCMSK0, &PCMSK1 };
 #elif defined(__AVR_ATmega16__) || defined(__AVR_ATmega8__) || defined(__AVR_ATmega32__)
-  #define NO_INTERRUPTS // these chips dont have pin change interrupts
+  #define NO_INTERRUPTS // these chips don't have pin change interrupts
 #else
  #define NO_INTERRUPTS
 #endif
@@ -49,14 +49,6 @@ volatile static byte* const PortToPins[] = { &PIND, &PINB, &PINC };
 #define GET_BIT_IDX(pin) ((pin + (pin<14?0:2)) & 7)
 #define GET_PIN_NUM(port, bitIdx) (((port)<<3) + (bitIdx) - (((port)>1)<<1))
 
-#ifndef PINTRIGGER_QLEN
-  #ifdef NO_INTERRUPTS
-    #define PINTRIGGER_QUEUE_LEN 0
-  #else
-    #define PINTRIGGER_QUEUE_LEN 4
-  #endif
-#endif
-
 typedef void (* PinListenerFunctionPointer) (byte pinValue, byte pinNum);
 typedef void (* RotaryListenerFunctionPointer) (signed char delta);
 
@@ -79,14 +71,14 @@ private:
   byte lastTriggerTms[8]; // holds the 8 least significant bits of the millis when this interrupt was last triggered
   byte listenerCount = 0;
   volatile byte queueLength = 0; // MSB indicates that a rotary encoder has turned
-  byte callQueue[PINTRIGGER_QUEUE_LEN]; // this queue is for calling interrupt handlers outside the interrupt scope to allow e.g. serial communication, delay etc.
+  byte *callQueue; // this queue is for calling interrupt handlers outside the interrupt scope to allow e.g. serial communication, delay etc.
                               // the byte contains the high/low flag in the LSB, then 3 bit for bit pin Idx
-
+  byte callQueueSize;
   void expireDebouncing(byte curMillis8LSB);
   byte setLstnr(PinListenerFunctionPointer fp, byte pin, bool debounce, bool immediate);
 
 public:
-  PinTrigger(byte portIdx, bool useInterrupts);
+  PinTrigger(byte portIdx, bool useInterrupts, byte queueLength=4);
   byte processInterrupt(byte pins); // this has to be public because it is called from the interrupt routine, should not be called otherwise
   /**
    * Allows registering a rotary listener to two pins. NOTE: the two pins have to be on the same port!

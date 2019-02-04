@@ -25,59 +25,58 @@ void myFunction()
 
 *********************************************************************/
 
-#include "Arduino.h"
 #include "ScheduledFunction.h"
 
 
-  ScheduledFunction::ScheduledFunction(ScheduledFunctionP f, uint32_t execDelay, bool repeat = false, bool isActive = true)
+ScheduledFunction::ScheduledFunction(ScheduledFunctionP f, uint32_t execDelay, bool repeat = false, bool isActive = true)
+{
+  fp = f;
+  this->active = isActive;
+  if(repeat)
+    this->repeatDelay = execDelay;
+  else
+    this->repeatDelay = 0;
+  execTMS = millis() + execDelay;
+}
+
+void ScheduledFunction::reschedule(uint32_t execDelay, bool repeat = false)
+{
+  execTMS = millis() + execDelay;
+  active = true;
+  if(repeat)
+    this->repeatDelay = execDelay;
+  else
+    this->repeatDelay = 0;
+}
+
+bool ScheduledFunction::isActive()
+{
+  return active;
+}
+void ScheduledFunction::cancel()
+{
+  active = false;
+}
+
+
+/**
+ * returns true, if there is still a function pending
+ */
+bool ScheduledFunction::process(uint32_t curMillis = millis())
+{
+  if(!active)
   {
-    fp = f;
-    this->active = isActive;
-    if(repeat)
-      this->repeatDelay = execDelay;
+    return false;
+  }
+
+  if((curMillis - execTMS)<1000000) // to account for roll overs
+  {
+    if(repeatDelay!=0)
+      execTMS = curMillis + repeatDelay;
     else
-      this->repeatDelay = 0;
-    execTMS = millis() + execDelay;
+      active = false;
+    fp(); // call the function
   }
 
-  void ScheduledFunction::reschedule(uint32_t execDelay, bool repeat = false)
-  {
-    execTMS = millis() + execDelay;
-    active = true;
-    if(repeat)
-      this->repeatDelay = execDelay;
-    else
-      this->repeatDelay = 0;
-  }
-  
-  bool ScheduledFunction::isActive()
-  {
-    return active;
-  }
-  void ScheduledFunction::cancel()
-  {
-    active = false;
-  }
-  
-  
-  /**
-   * returns true, if there is still a function pending
-   */
-  bool ScheduledFunction::process(uint32_t curMillis = millis())
-  {
-    if(!active)
-    {
-      return false;
-    }
-
-    if((curMillis - execTMS)<1000000) // to account for roll overs
-    {
-      if(repeatDelay!=0)
-        execTMS = curMillis + repeatDelay;
-      else
-        active = false;
-      fp(); // call the function
-    }
-
-    return active;
-  }
+  return active;
+}

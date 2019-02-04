@@ -6,10 +6,16 @@
 
 extern unsigned long timer0_millis; // in interrupts we access this variable directly - this is faster
 
-PinTrigger::PinTrigger(byte portIndex, bool useInterrupts)
+#if defined(DEBUG) || defined(WARN)
+AsyncDebugBuffer asyncBuf = AsyncDebugBuffer();
+#endif
+
+PinTrigger::PinTrigger(byte portIndex, bool useInterrupts, byte queueLength=4)
 {
   portIdx = portIndex;
   this->useInterrupts = useInterrupts;
+  callQueue = malloc(queueLength);
+  callQueueSize = queueLength;
 }
 
 byte PinTrigger::setListenerImmediate(PinListenerFunctionPointer fp, byte pin, bool deb)
@@ -23,11 +29,10 @@ byte PinTrigger::setListener(PinListenerFunctionPointer fp, byte pin, bool deb)
 
 byte PinTrigger::setLstnr(PinListenerFunctionPointer fp, byte pin, bool deb, bool immediate)
 {
-//    ASSERT(listenerCount<MAX_LISTENERS-1, "Maximum number of listeners exceeded, use #define MAX_LISTENERS to increase the limit");
   byte port = GET_PORT_IDX(pin);
   if(port!=portIdx)
   {
-    Serial.println("ERROR PIN of Listener not on the correct Port");
+    WARN_PRINTLN(F("ERROR PIN of Listener not on the correct Port"));
   }
   byte bitIdx = GET_BIT_IDX(pin);
   byte bitMsk = GET_BITMASK(bitIdx);
@@ -39,14 +44,14 @@ byte PinTrigger::setLstnr(PinListenerFunctionPointer fp, byte pin, bool deb, boo
   else
     immediate=true;
     
-  DEBUG_PRINT("PinTrigger::setListener for pin");
-  DEBUG_PRINTDEC(pin);
-  DEBUG_PRINT(", portIdx");
-  DEBUG_PRINTDEC(portIdx);
-  DEBUG_PRINT(", bitIdx");
-  DEBUG_PRINTDEC(bitIdx);
-  DEBUG_PRINT(", PCMSK");
-  DEBUG_PRINTLNBIN(*digitalPinToPCMSK(pin));
+  DEBUG_PRINT(F("PinTrigger::setListener for pin"));
+  DEBUG_PRINT(pin);
+  DEBUG_PRINT(F(", portIdx"));
+  DEBUG_PRINT(portIdx);
+  DEBUG_PRINT(F(", bitIdx"));
+  DEBUG_PRINT(bitIdx);
+  DEBUG_PRINT(F(", PCMSK"));
+  DEBUG_PRINTLN(*digitalPinToPCMSK(pin), BIN);
 
   listenerFP[bitIdx] = fp;
   lastTriggerTms[bitIdx] = 0;
@@ -63,10 +68,10 @@ byte PinTrigger::setLstnr(PinListenerFunctionPointer fp, byte pin, bool deb, boo
 
 byte PinTrigger::setRotaryListener(RotaryListenerFunctionPointer fp, byte pinA, byte pinB)
 {
-  DEBUG_PRINT("Adding rotaryEncoder pinA:");
-  DEBUG_PRINTDEC(pinA);
-  DEBUG_PRINT(", pinB:");
-  DEBUG_PRINTDEC(pinB);
+  DEBUG_PRINT(F("Adding rotaryEncoder pinA:"));
+  DEBUG_PRINT(pinA);
+  DEBUG_PRINT(F(", pinB:"));
+  DEBUG_PRINT(pinB);
 
   unsigned int fpParts = (unsigned int)fp;
   unsigned int fpA = (unsigned int)fp & 0xFF00;
@@ -77,16 +82,16 @@ byte PinTrigger::setRotaryListener(RotaryListenerFunctionPointer fp, byte pinA, 
   fpA |= GET_BIT_IDX(pinB);
   isRotaryEncoder|= GET_BITMASK(GET_BIT_IDX(pinA)) | GET_BITMASK(GET_BIT_IDX(pinB));
   
-  DEBUG_PRINT(", pointer:");
-  DEBUG_PRINTHEX(fpParts);
+  DEBUG_PRINT(F(", pointer:"));
+  DEBUG_PRINT(fpParts, HEX);
   DEBUG_PRINT(", fpA:");
-  DEBUG_PRINTHEX(fpA);
+  DEBUG_PRINT(fpA, HEX);
   DEBUG_PRINT(", fpB:");
-  DEBUG_PRINTHEX(fpB);
+  DEBUG_PRINT(fpB, HEX);
   DEBUG_PRINTLN("");
 
-  setListenerImmediate(fpA, pinA, 0);
-  return setListenerImmediate(fpB, pinB, 0);
+  setListenerImmediate((PinListenerFunctionPointer)fpA, pinA, 0);
+  return setListenerImmediate((PinListenerFunctionPointer)fpB, pinB, 0);
 }
 
 byte PinTrigger::processInterrupt(byte port)
@@ -97,23 +102,14 @@ byte PinTrigger::processInterrupt(byte port)
   else
     changedPins = (port ^ prevDigitalPorts) & registeredPins & ~debouncedPins;
   
-  DEBUG_PRINT_ASYNC("processInterrupt - pins: ");
-  DEBUG_PRINT_ASYNC_INT(port, BIN);
-  DEBUG_PRINT_ASYNC(", PCMSK");
-  DEBUG_PRINT_ASYNC_INT(*PortToPCMSK, BIN);
-  DEBUG_PRINT_ASYNC(", portIdx");
-  DEBUG_PRINT_ASYNC_INT(portIdx, DEC);
-  DEBUG_PRINT_ASYNC(", prevPins");
-  DEBUG_PRINTLN_ASYNC_INT(prevDigitalPorts, BIN);
+  DEBUG_PRINT_ASYNC(asyncBuf, F("processInterrupt - pins: "));
+  DEBUG_PRINT_ASYNC(asyncBuf, port, BIN);
+  DEBUG_PRINT_ASYNC(asyncBuf, F(", changedPins"));
+  DEBUG_PRINTLN_ASYNC(asyncBuf, changedPins, BIN);
 
   if(changedPins==0) // if we rely on interrupts, this should actually not happen
   {
-    DEBUG_PRINT_ASYNC("No Pin changed in processInterrupt");
-    DEBUG_PRINT_ASYNC_INT(port, BIN);
-    DEBUG_PRINT_ASYNC(", PCMSK");
-    DEBUG_PRINT_ASYNC_INT(*PortToPCMSK, BIN);
-    DEBUG_PRINT_ASYNC(", prevPins");
-    DEBUG_PRINTLN_ASYNC_INT(prevDigitalPorts, BIN);
+    DEBUG_PRINT_ASYNC(asyncBuf, F("No Pin changed in processInterrupt"));
     return 0;
   }
 
@@ -136,8 +132,8 @@ processIntLoop: // with a goto we can save a few comparisons here
   curPinMask = GET_BITMASK(pin);
 
   byte pinValue = (port & curPinMask) ? HIGH : LOW;
-  DEBUG_PRINT_ASYNC_TMS("Interrupt: ");
-  DEBUG_PRINTLN_ASYNC_INT(pin, DEC);
+  DEBUG_PRINT_ASYNC_TMS(asyncBuf, "Interrupt: ");
+  DEBUG_PRINTLN_ASYNC(asyncBuf, pin);
 
   if(isRotaryEncoder & curPinMask)
   {
@@ -166,22 +162,22 @@ processIntLoop: // with a goto we can save a few comparisons here
         debouncedPins |= curPinMask;
 
       lastTriggerTms[pin] = (byte)timer0_millis;
-      DEBUG_PRINT_ASYNC_TMS("debounce pin");
+      DEBUG_PRINT_ASYNC_TMS(asyncBuf, F("debounce pin"));
     }
     if(immediateFlags & curPinMask) // call immediately, if the flag is set 
     {
       listenerFP[pin](pinValue, GET_PIN_NUM(portIdx, pin));
     }
-    else if((queueLength & B01111111)< PINTRIGGER_QUEUE_LEN)
+    else if((queueLength & B01111111)< callQueueSize)
     {
-      DEBUG_PRINT_ASYNC("queueing: ");
-      DEBUG_PRINTLN_ASYNC_INT((pin<<1) | pinValue, BIN);
+      DEBUG_PRINT_ASYNC(asyncBuf, F("queueing: "));
+      DEBUG_PRINTLN_ASYNC(asyncBuf, (pin<<1) | pinValue, BIN);
       callQueue[queueLength & B01111111] =  (pin<<1) | pinValue; // queue the listener call for execution via process
       queueLength++;
     }
     else
     {
-      WARN_PRINTLN_ASYNC("ERROR: PinTrigger:callqueueOverflow - skipping interrupt");
+      WARN_PRINTLN_ASYNC(asyncBuf, F("ERROR: PinTrigger:callqueueOverflow - skipping interrupt"));
     }
   }
   changedPins &= ~curPinMask;
@@ -215,18 +211,18 @@ void PinTrigger::expireDebouncing(byte curMillisLS8B)
         msSinceInterrupt = curMillisLS8B - lastTriggerTms[pin]; // this works even if one or both arguments have rolled over
         if(msSinceInterrupt >= DEBOUNCE_TIME)
         {
-          DEBUG_PRINT_TMS("turn off debouncing: lastTriggerTms: ");
-          DEBUG_PRINTDEC(lastTriggerTms[pin]);
-          DEBUG_PRINT(", curMills8bit: ");
-          DEBUG_PRINTDEC(curMillisLS8B);
-          DEBUG_PRINT(", PCMSK: ");
-          DEBUG_PRINTBIN(*PortToPCMSK[portIdx]);
-          DEBUG_PRINT(", regPins: ");
-          DEBUG_PRINTBIN(registeredPins);
-          DEBUG_PRINT(", portIdx: ");
-          DEBUG_PRINTDEC(portIdx);
-          DEBUG_PRINT(", pin: ");
-          DEBUG_PRINTLNDEC(pin);
+          DEBUG_PRINT_TMS(F("turn off debouncing: lastTriggerTms: "));
+          DEBUG_PRINT(lastTriggerTms[pin]);
+          DEBUG_PRINT(F(", curMills8bit: "));
+          DEBUG_PRINT(curMillisLS8B);
+          DEBUG_PRINT(F(", PCMSK: "));
+          DEBUG_PRINT(*PortToPCMSK[portIdx], BIN);
+          DEBUG_PRINT(F(", regPins: "));
+          DEBUG_PRINT(registeredPins, BIN);
+          DEBUG_PRINT(F(", portIdx: "));
+          DEBUG_PRINT(portIdx);
+          DEBUG_PRINT(F(", pin: "));
+          DEBUG_PRINTLN(pin);
           if(useInterrupts)
             *PortToPCMSK[portIdx] |= curPinMask;
           else
@@ -234,20 +230,20 @@ void PinTrigger::expireDebouncing(byte curMillisLS8B)
 
           if((GET_PINS(portIdx) ^ prevDigitalPorts) & curPinMask) // pin changed after last interrupt
           {
-            DEBUG_PRINTLN("simulate interrupt after debouncing");
+            DEBUG_PRINTLN(F("simulate interrupt after debouncing"));
             processInterrupt(prevDigitalPorts ^ curPinMask); // we call the interrupt handler again
           }
 #ifdef WARN
           if(msSinceInterrupt > (DEBOUNCE_TIME + 5))
           {
-            WARN_PRINT_TMS("late debouncing turned off more than 5ms late: lastTriggerTms: ");
-            WARN_PRINTDEC(lastTriggerTms[pin]);
-            WARN_PRINT(", curMills8bit: ");
-            WARN_PRINTDEC(curMillisLS8B);
-            WARN_PRINT(", pin: ");
-            WARN_PRINTDEC(pin);
-            WARN_PRINT(", msSinceInterrupt: ");
-            WARN_PRINTLNDEC(msSinceInterrupt);
+            WARN_PRINT_TMS(F("late debouncing turned off more than 5ms late: lastTriggerTms: "));
+            WARN_PRINT(lastTriggerTms[pin]);
+            WARN_PRINT(F(", curMills8bit: "));
+            WARN_PRINT(curMillisLS8B);
+            WARN_PRINT(F(", pin: "));
+            WARN_PRINT(pin);
+            WARN_PRINT(F(", msSinceInterrupt: "));
+            WARN_PRINTLN(msSinceInterrupt);
           }
 #endif
         }
@@ -266,8 +262,6 @@ byte PinTrigger::process()
     cond = debouncedPins!=0;
   if(cond)
   {
-    //DEBUG_PRINT("Debouncing Port ");
-    //DEBUG_PRINTLNDEC(i);
     expireDebouncing((byte)timer0_millis);
   }
   if(!useInterrupts && GET_PINS(portIdx)!=prevDigitalPorts)
@@ -289,14 +283,14 @@ processQueue:
       byte curQueueEntry = callQueue[i]; 
       byte bitIdx = (curQueueEntry>>1) & B0000111;
 
-      DEBUG_PRINT("PinTrigger::process about to call listener idx:");
-      DEBUG_PRINTDEC(bitIdx);
-      DEBUG_PRINT(", queueEntry:");
-      DEBUG_PRINTBIN(callQueue[i]);
-      DEBUG_PRINT(", port:");
-      DEBUG_PRINTDEC(portIdx);
-      DEBUG_PRINT(", bitIdx:");
-      DEBUG_PRINTLNDEC(bitIdx);
+      DEBUG_PRINT(F("PinTrigger::process about to call listener idx:"));
+      DEBUG_PRINT(bitIdx);
+      DEBUG_PRINT(F(", queueEntry:"));
+      DEBUG_PRINT(callQueue[i], BIN);
+      DEBUG_PRINT(F(", port:"));
+      DEBUG_PRINT(portIdx);
+      DEBUG_PRINT(F(", bitIdx:"));
+      DEBUG_PRINTLN(bitIdx);
       
       listenerFP[bitIdx](curQueueEntry & 1, GET_PIN_NUM(portIdx, bitIdx));
     }
@@ -306,7 +300,7 @@ processQueue:
     
     if((queueLength & B01111111)>i) //an interrupt happened after the loop has completed and before the interrupts have been disabled
     {
-      DEBUG_PRINTLN_TMS("RaceCondition:handle more interrupts");
+      DEBUG_PRINTLN_TMS(F("RaceCondition:handle more interrupts"));
       sei();
       ints=queueLength & B01111111;
       goto processQueue;
@@ -314,7 +308,6 @@ processQueue:
     queueLength&=B10000000;
     sei(); // reenable interrupts
   }
-//  DEBUG_PRINTLN("PinTrigger::process - listener calling complete");
 
   if(queueLength & B10000000)
   {
@@ -342,17 +335,17 @@ processQueue:
             {
               rotADef[0]&=B00011111;
               rotBDef[0]&=B00011111;
-              DEBUG_PRINT("Process RotaryEncoder: fpA: ");
-              DEBUG_PRINTHEX((unsigned int)listenerFP[bitIdx]);
-              DEBUG_PRINT(", fpB: ");
-              DEBUG_PRINTHEX((unsigned int)listenerFP[otherBitIdx]);
-              DEBUG_PRINT(", BbitIdx: ");
-              DEBUG_PRINTDEC(otherBitIdx);
-              DEBUG_PRINT(", DELTA: ");
-              DEBUG_PRINTDEC(delta);
+              DEBUG_PRINT(F("Process RotaryEncoder: fpA: "));
+              DEBUG_PRINT((unsigned int)listenerFP[bitIdx], HEX);
+              DEBUG_PRINT(F(", fpB: "));
+              DEBUG_PRINT((unsigned int)listenerFP[otherBitIdx], HEX);
+              DEBUG_PRINT(F(", BbitIdx: "));
+              DEBUG_PRINT(otherBitIdx);
+              DEBUG_PRINT(F(", DELTA: "));
+              DEBUG_PRINT(delta);
               unsigned int fPointer = (((unsigned int)rotADef[1])<<8) | rotBDef[1];
-              DEBUG_PRINT(" Calling rotaryListener:");
-              DEBUG_PRINTLNHEX(fPointer);
+              DEBUG_PRINT(F(" Calling rotaryListener:"));
+              DEBUG_PRINTLN(fPointer, HEX);
               
               ((RotaryListenerFunctionPointer)fPointer)(delta);
             }
@@ -361,6 +354,11 @@ processQueue:
       }
     }
   }
+
+#ifdef DEBUG
+  asyncBuf.flush();
+#endif
+
   return ints;
 }
 

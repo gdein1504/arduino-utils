@@ -3,92 +3,91 @@
 
 #include "Arduino.h"
 
-extern char const *DEBUG_MSG[];
-extern int DEBUG_MSG_INT[];
-extern unsigned int DEBUG_MSG_TMS[];
-extern char DEBUG_MSG_FORMAT[];
-extern volatile byte DEBUG_MSG_IDX;
 
-void printDebugMsgAsync();
+#define DEBUG_FLAG_PRINT_TMS B10000000
+#define DEBUG_FLAG_NEWLINE  B01000000
 
- #define DEBUG_ASYNC_BUF_LEN 8
- #define PRINT_ASYNC(x) {DEBUG_MSG[DEBUG_MSG_IDX]=x;DEBUG_MSG_FORMAT[DEBUG_MSG_IDX]=0;DEBUG_MSG_IDX<DEBUG_ASYNC_BUF_LEN-1?DEBUG_MSG_IDX++:DEBUG_MSG_IDX;}
- #define PRINT_ASYNC_TMS(x) {DEBUG_MSG[DEBUG_MSG_IDX]=x;DEBUG_MSG_FORMAT[DEBUG_MSG_IDX]=2;DEBUG_MSG_TMS[DEBUG_MSG_IDX]=millis();DEBUG_MSG_IDX<DEBUG_ASYNC_BUF_LEN-1?DEBUG_MSG_IDX++:DEBUG_MSG_IDX;}
- #define PRINT_ASYNC_INT(x, f) {DEBUG_MSG_FORMAT[DEBUG_MSG_IDX]=f<<2; DEBUG_MSG_INT[DEBUG_MSG_IDX]=x;DEBUG_MSG_IDX<DEBUG_ASYNC_BUF_LEN-1?DEBUG_MSG_IDX++:DEBUG_MSG_IDX;}
- #define PRINTLN_ASYNC(x) {DEBUG_MSG[DEBUG_MSG_IDX]=x; DEBUG_MSG_FORMAT[DEBUG_MSG_IDX]=1; DEBUG_MSG_IDX<DEBUG_ASYNC_BUF_LEN-1?DEBUG_MSG_IDX++:DEBUG_MSG_IDX;}
- #define PRINTLN_ASYNC_TMS(x) {DEBUG_MSG[DEBUG_MSG_IDX]=x; DEBUG_MSG_FORMAT[DEBUG_MSG_IDX]=3; DEBUG_MSG_TMS[DEBUG_MSG_IDX]=millis();DEBUG_MSG_IDX<DEBUG_ASYNC_BUF_LEN-1?DEBUG_MSG_IDX++:DEBUG_MSG_IDX;}
- #define PRINTLN_ASYNC_INT(x, f) {DEBUG_MSG_FORMAT[DEBUG_MSG_IDX]=(f<<2)|1; DEBUG_MSG_INT[DEBUG_MSG_IDX]=x;DEBUG_MSG_IDX<DEBUG_ASYNC_BUF_LEN-1?DEBUG_MSG_IDX++:DEBUG_MSG_IDX;}
- #define PRINT_ASYNC_DEBUG_MSGS printDebugMsgAsync();
+#define DEBUG_ASYNC_BUF_LEN 8
+#define DEBUG_ASYNC_BUF_MAX_MASK 7
+ 
+
+ #define PRINT_ASYNC(buf, ...)        buf.push(0, 0, __VA_ARGS__)
+ #define PRINT_ASYNC_TMS(buf, ...)    buf.push(DEBUG_FLAG_PRINT_TMS, millis(), __VA_ARGS__)
+ #define PRINTLN_ASYNC(buf, ...)      buf.push(DEBUG_FLAG_NEWLINE, 0, __VA_ARGS__)
+ #define PRINTLN_ASYNC_TMS(buf, ...)  buf.push(DEBUG_FLAG_PRINT_TMS || DEBUG_FLAG_NEWLINE, millis(), __VA_ARGS__)
 
 #ifdef DEBUG
- #define DEBUG_PRINT_ASYNC(x) PRINT_ASYNC(x)
- #define DEBUG_PRINT_ASYNC_TMS(x) PRINT_ASYNC_TMS(x)
- #define DEBUG_PRINT_ASYNC_INT(x, f) PRINT_ASYNC_INT(x, f)
- #define DEBUG_PRINTLN_ASYNC(x) PRINTLN_ASYNC(x)
- #define DEBUG_PRINTLN_ASYNC_TMS(x) PRINT_ASYNC_TMS(x)
- #define DEBUG_PRINTLN_ASYNC_INT(x, f) PRINTLN_ASYNC_INT(x, f)
+ #define DEBUG_PRINT_ASYNC(buf, ...)        PRINT_ASYNC(buf, __VA_ARGS__)
+ #define DEBUG_PRINT_ASYNC_TMS(buf, ...)    PRINT_ASYNC_TMS(buf, __VA_ARGS__)
+ #define DEBUG_PRINTLN_ASYNC(buf, ...)      PRINTLN_ASYNC(buf, __VA_ARGS__)
+ #define DEBUG_PRINTLN_ASYNC_TMS(buf, ...)  PRINTLN_ASYNC_TMS(buf, __VA_ARGS__)
  
- #define DEBUG_PRINT(x)    {Serial.print (x); Serial.flush();}
- #define DEBUG_PRINTLN(x)  {Serial.println(x); Serial.flush();}
- #define DEBUG_PRINT_TMS(x)    {Serial.print(millis()); Serial.print (": "); Serial.print (F(x)); Serial.flush();}
- #define DEBUG_PRINTLN_TMS(x)  {Serial.print(millis()); Serial.print (": "); Serial.println(F(x)); Serial.flush();}
- #define DEBUG_PRINTHEX(x)    {Serial.print(x, HEX); Serial.flush();}
- #define DEBUG_PRINTDEC(x) {Serial.print (x, DEC); Serial.flush();}
- #define DEBUG_PRINTBIN(x) {Serial.print (x, BIN); Serial.flush();}
- #define DEBUG_PRINTLNDEC(x) {Serial.println(x, DEC); Serial.flush();}
- #define DEBUG_PRINTLNBIN(x) {Serial.println(x, BIN); Serial.flush();}
- #define DEBUG_PRINTLNHEX(x) {Serial.println(x, HEX); Serial.flush();}
+ #define DEBUG_PRINT(...)       {Serial.print (__VA_ARGS__); Serial.flush();}
+ #define DEBUG_PRINTLN(...)     {Serial.println(__VA_ARGS__); Serial.flush();}
+ #define DEBUG_PRINT_TMS(...)   {Serial.print(millis()); Serial.print (": "); Serial.print (__VA_ARGS__); Serial.flush();}
+ #define DEBUG_PRINTLN_TMS(...) {Serial.print(millis()); Serial.print (": "); Serial.println(__VA_ARGS__); Serial.flush();}
 #else // debug undefined
- #define DEBUG_PRINT_ASYNC(x)
- #define DEBUG_PRINT_ASYNC_TMS(x)
- #define DEBUG_PRINT_ASYNC_INT(x, f)
- #define DEBUG_PRINTLN_ASYNC(x) 
- #define DEBUG_PRINTLN_ASYNC_TMS(x) 
- #define DEBUG_PRINTLN_ASYNC_INT(x, f) 
- #define DEBUG_PRINT(x)
- #define DEBUG_PRINTDEC(x)
- #define DEBUG_PRINT_TMS(x)
- #define DEBUG_PRINTLN_TMS(x)
- #define DEBUG_PRINTBIN(x)
- #define DEBUG_PRINTHEX(x)
- #define DEBUG_PRINTLNDEC(x)
- #define DEBUG_PRINTLNBIN(x)
- #define DEBUG_PRINTLNHEX(x)
- #define DEBUG_PRINTLN(x)
+ #define DEBUG_PRINT_ASYNC(...)
+ #define DEBUG_PRINT_ASYNC_TMS(...)
+ #define DEBUG_PRINTLN_ASYNC(...)
+ #define DEBUG_PRINTLN_ASYNC_TMS(...)
+ 
+ #define DEBUG_PRINT(...)    
+ #define DEBUG_PRINTLN(...)  
+ #define DEBUG_PRINT_TMS(...)
+ #define DEBUG_PRINTLN_TMS(...)
 #endif
 
 #ifdef WARN
- #define WARN_PRINT_ASYNC(x) PRINT_ASYNC(x)
- #define WARN_PRINT_ASYNC_TMS(x) PRINT_ASYNC_TMS(x)
- #define WARN_PRINT_ASYNC_INT(x, f) PRINT_ASYNC_INT(x, f)
- #define WARN_PRINTLN_ASYNC(x) PRINTLN_ASYNC(x)
- #define WARN_PRINTLN_ASYNC_TMS(x) PRINT_ASYNC_TMS(x)
- #define WARN_PRINTLN_ASYNC_INT(x, f) PRINTLN_ASYNC_INT(x, f)
+ #define WARN_PRINT_ASYNC(buf, ...)       PRINT_ASYNC(buf, __VA_ARGS__)
+ #define WARN_PRINT_ASYNC_TMS(buf, ...)   PRINT_ASYNC_TMS(buf, __VA_ARGS__)
+ #define WARN_PRINTLN_ASYNC(buf, ...)     PRINTLN_ASYNC(buf, __VA_ARGS__)
+ #define WARN_PRINTLN_ASYNC_TMS(buf, ...) PRINTLN_ASYNC_TMS(buf, __VA_ARGS__)
  
- #define WARN_PRINT(x)    {Serial.print(F(x)); Serial.flush();}
- #define WARN_PRINTLN(x)  {Serial.println(F(x)); Serial.flush();}
- #define WARN_PRINT_TMS(x)    {Serial.print(millis()); Serial.print (": "); Serial.print(F(x)); Serial.flush();}
- #define WARN_PRINTLN_TMS(x)  {Serial.print(millis()); Serial.print (": "); Serial.println(F(x)); Serial.flush();}
- #define WARN_PRINTDEC(x) {Serial.print (x, DEC); Serial.flush();}
- #define WARN_PRINTBIN(x) {Serial.print (x, BIN); Serial.flush();}
- #define WARN_PRINTLNDEC(x) {Serial.println(x, DEC); Serial.flush();}
- #define WARN_PRINTLNBIN(x) {Serial.println(x, BIN); Serial.flush();}
+ #define WARN_PRINT(...)        {Serial.print (__VA_ARGS__); Serial.flush();}
+ #define WARN_PRINTLN(...)      {Serial.println(__VA_ARGS__); Serial.flush();}
+ #define WARN_PRINT_TMS(...)    {Serial.print(millis()); Serial.print (": "); Serial.print (__VA_ARGS__); Serial.flush();}
+ #define WARN_PRINTLN_TMS(...)  {Serial.print(millis()); Serial.print (": "); Serial.println(__VA_ARGS__); Serial.flush();}
+
 #else // WARN undefined
- #define WARN_PRINT_ASYNC(x) 
- #define WARN_PRINT_ASYNC_TMS(x) 
- #define WARN_PRINT_ASYNC_INT(x, f) 
- #define WARN_PRINTLN_ASYNC(x) 
- #define WARN_PRINTLN_ASYNC_TMS(x) 
- #define WARN_PRINTLN_ASYNC_INT(x, f) 
- #define WARN_PRINT(x)
- #define WARN_PRINTDEC(x)
- #define WARN_PRINTBIN(x)
- #define WARN_PRINT_TMS(x)
- #define WARN_PRINTLN_TMS(x)
- #define WARN_PRINTLNDEC(x)
- #define WARN_PRINTLNBIN(x)
- #define WARN_PRINTLN(x)
+ #define WARN_PRINT_ASYNC(...)
+ #define WARN_PRINT_ASYNC_TMS(...)
+ #define WARN_PRINTLN_ASYNC(...)
+ #define WARN_PRINTLN_ASYNC_TMS(...)
+ 
+ #define WARN_PRINT(...)
+ #define WARN_PRINTLN(...)
+ #define WARN_PRINT_TMS(...)
+ #define WARN_PRINTLN_TMS(...)
 #endif
 
-#endif
 
+class AsyncDebugBuffer
+{
+private:
+  char const *message[DEBUG_ASYNC_BUF_LEN];
+  unsigned int msgTMS[DEBUG_ASYNC_BUF_LEN];
+  int msgInt[DEBUG_ASYNC_BUF_LEN];
+  char msgFormat[DEBUG_ASYNC_BUF_LEN];
+  volatile byte curIdx=0;
+public:
+  void flush();
+  void push(byte tmsNlCode, unsigned int curMillis, char const *msg, byte format=0)
+  {
+    message[curIdx]=msg;
+    msgTMS[curIdx] = curMillis;
+    msgFormat[curIdx] = format | tmsNlCode;
+    curIdx= (curIdx+1) & DEBUG_ASYNC_BUF_MAX_MASK;
+  }
+  void push(byte tmsNlCode, unsigned int curMillis, int num, byte format=DEC)
+  {
+    msgInt[curIdx] = num;
+    msgTMS[curIdx] = curMillis;
+    msgFormat[curIdx] = format | tmsNlCode;
+    curIdx= (curIdx+1) & DEBUG_ASYNC_BUF_MAX_MASK;
+  }
+
+};
+
+
+#endif
