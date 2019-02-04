@@ -10,12 +10,13 @@ void AsyncDebugBuffer::flush()
       Serial.print(msgTMS[i], DEC);
       Serial.print(": "); 
     }
-    if(msgFormat[i]>3) //its a number
+    byte numFormat = msgFormat[i] & B00111111;
+    if(numFormat != 0) //its a number
     {
       if(msgFormat[i]&DEBUG_FLAG_NEWLINE) 
-        Serial.println(msgInt[i], msgFormat[i] & B00111111);
+        Serial.println(msgInt[i], numFormat);
       else
-        Serial.print(msgInt[i], msgFormat[i] & B00111111);
+        Serial.print(msgInt[i], numFormat);
     }
     else // its a string
     {
