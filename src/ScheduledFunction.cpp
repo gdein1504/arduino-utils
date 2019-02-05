@@ -64,12 +64,7 @@ void ScheduledFunction::cancel()
  */
 bool ScheduledFunction::process(uint32_t curMillis = millis())
 {
-  if(!active)
-  {
-    return false;
-  }
-
-  if((curMillis - execTMS)<1000000) // to account for roll overs
+  if(active && (curMillis - execTMS)<1000000) // to account for roll overs
   {
     if(repeatDelay!=0)
       execTMS = curMillis + repeatDelay;
