@@ -267,7 +267,6 @@ byte PinTrigger::process()
   if(!useInterrupts && GET_PINS(portIdx)!=prevDigitalPorts)
   {
     processInterrupt(GET_PINS(portIdx));
-    lastTriggerTMS = millis();
   }
 
   byte ints = queueLength & B01111111;
@@ -295,8 +294,6 @@ processQueue:
       listenerFP[bitIdx](curQueueEntry & 1, GET_PIN_NUM(portIdx, bitIdx));
     }
     cli(); //disable interrupts
-    if(i>0) // lastTriggerTMS is set in the process loop to not delay the interrupt handler
-      lastTriggerTMS = timer0_millis;
     
     if((queueLength & B01111111)>i) //an interrupt happened after the loop has completed and before the interrupts have been disabled
     {
@@ -369,9 +366,4 @@ bool PinTrigger::safeToSleep()
     return !(*PortToPCMSK[portIdx]!= registeredPins || (prevDigitalPorts & registeredPins) != registeredPins);
   else
     return false;
-}
-
-unsigned long PinTrigger::getLastTriggerTMS()
-{
-  return lastTriggerTMS;
 }

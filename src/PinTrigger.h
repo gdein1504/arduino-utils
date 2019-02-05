@@ -58,7 +58,6 @@ private:
   bool useInterrupts;
   byte portIdx;
   byte debouncedPins = 0; // only used when there are no interrupts;
-  unsigned long lastTriggerTMS=0; // holds the TMS of very last trigger
   byte debounceFlags;
   byte immediateFlags;
   byte prevDigitalPorts = 0xFF;
@@ -109,10 +108,6 @@ public:
    */
   bool safeToSleep();
 
-  /**
-   * returns the TMS of the last Time a trigger has been called. Can be used to detect for how long there has been no user interaction
-   */
-  unsigned long getLastTriggerTMS();
 };
 
 #endif
