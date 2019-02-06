@@ -98,6 +98,7 @@ public:
 
   /**
    * This function has to be called frequently in the loop. It takes care of executing the listeners and debouncing the interrupts
+   * returns the number of handlers that have been called - 0 if no listeners have been called
    */
   byte process();
 
